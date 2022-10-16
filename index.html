@@ -1,0 +1,292 @@
+<!DOCTYPE html>
+<html>
+    <head>
+        <meta charset = "UTF-8">
+        <title>What are the odds</title>
+        <style>
+            body {
+                font-family: 'PT Sans', sans-serif;
+            }
+
+            .selector {
+                padding-top: 30px;
+                display: grid;
+                gap: 30px;
+                justify-content: space-around;
+                align-items: start;
+            }
+
+            .selector-tile {
+                max-width: 20em;
+                border-radius: 20px;
+                padding: 5px 15px;
+                box-shadow: 0px 0px 10px grey;
+            }
+
+            .selector-tile:hover {
+                background-color: rgb(248, 248, 248)
+            }
+
+            .selector-tile > h1 {
+                margin-top: 0.5em;
+                margin-bottom: 0px;
+            }
+
+            .number-input {
+                display: grid;
+                justify-content: center;
+                gap: 30px;
+            }
+
+            .number-input > h1 {
+                margin-bottom: 0;
+            }
+
+            .input-div-wrapper {
+                display: grid;
+                justify-items: center;
+            }
+
+            .input-div {
+                font-size: 3em;
+            }
+
+            .next-button-wrapper {
+                display: grid;
+                justify-items: end;
+            }
+
+            input {
+                border-style: solid;
+                border-color: black;
+                border-width: 5px;;
+                font-size: 1em;
+                max-width: 2em;
+            }
+
+            button {
+                padding: 0.5em;
+                border: none;
+                font-size: 1.25em;
+                font-weight: bold;
+                background-color: rgb(224, 224, 224);
+            }
+
+            button:hover {
+                background-color: black;
+                color: rgb(224, 224, 224)
+            }
+        </style>
+    </head>
+    <body>
+        <div id="random-selector" class="selector">
+            <div id="random-yes" class="selector-tile">
+                <h1>Zufallszahlen</h1>
+                <p>Ihr gebt nur ein, wie hoch die Chancen sein sollen, der Rest erledigt der Computer.</p>
+            </div>
+            <div id="random-no" class="selector-tile">
+                <h1>Manuelle Eingabe</h1>
+                <p>Ihr gebt ein, wie hoch die Chancen sein sollen, danach kann jeder sein Zahl frei wählen, oder sich vom Computer helfen lassen.</p>
+            </div>
+        </div>
+        <script>
+            function Game (odds, newGameWhenEqualsOdds) {
+                this.odds = odds;
+                this.newGameWhenEqualsOdds = newGameWhenEqualsOdds;
+                this.player1 = "";
+                this.player2 = "";
+                this.newGame = false;
+
+                this.evaluate = function() {
+                    if (this.player1 === "") {
+                        this.player1 = Math.floor(Math.random() * odds) + 1;
+                    }
+                    if (this.player2 === "") {
+                        this.player2 = Math.floor(Math.random() * odds) + 1;
+                    }
+
+                    if (this.player1 === this.player2) {
+                        this.success = true;
+                    } else {
+                        this.success = false;
+                    }
+
+                    if (this.newGameWhenEqualsOdds) {
+                        if ((this.player1 + this.player2) === this.odds) {
+                            this.newGame = true
+                        }
+                    }
+
+                    return [this.success, this.newGame]
+                }
+            }
+
+            function GameFlow (random, nextGameWhenEqualsOdds, odds) {
+                this.random = random;
+                this.nextGameWhenEqualsOdds = nextGameWhenEqualsOdds;
+                this.odds = odds;
+
+                this.showPlayer = (num) => {
+                    return new Promise((resolve) => {
+                        document.body.innerHTML = `
+                            <div class="number-input">
+                                <h1>Welche Zahl solls sein, Spieler ${num}?</h1>
+                                <div class="input-div-wrapper"><span class="input-div"><input id="input" type="number" step="1" min="1" max="${this.game.odds}"></span></div>
+                                <div class="next-button-wrapper"><button id="player${num}-button">Weiter</button></div>
+                            </div>
+                        `
+
+                        document.getElementById('player' + num + '-button').addEventListener("click", () => {
+                            let val = "";
+                            if (document.getElementById('input').value !== "") {
+                                val = parseInt(document.getElementById('input').value)
+                            }
+                            if(((val >= 1) && (val <= this.odds)) || (document.getElementById('input').value === "")) {
+                                if (num === 1) {
+                                    this.game.player1 = val;
+                                    this.showPlayer(2).then(() => {resolve()})
+                                } else {
+                                    this.game.player2 = val;
+                                    resolve();
+                                }
+                            }
+                        })
+                    })
+                }
+
+                this.start = async () => {
+                        this.game = new Game(this.odds, this.nextGameWhenEqualsOdds);
+                        if(!this.random) {
+                            await this.showPlayer(1)
+                        }
+                        this.game.evaluate();
+                        let resultString;
+                        if(this.game.success && this.game.newGame) {
+                            resultString = '😱 Oh nein, du musst die Aufgabe erledigen. Immerhin gibts noch ne Revanche.'
+                        } else if(!this.game.success && this.game.newGame) {
+                            resultString = '🎉 Yeah, du musst die Aufgabe nicht erledigen und es gibt eine Revanche.'
+                        } else if(this.game.success && !this.game.newGame) {
+                            resultString = '😱 Oh nein, du musst die Aufgabe erledigen.'
+                        } else {
+                            resultString = '🥳 Yeah, du musst die Aufgabe nicht erledigen.'
+                        }
+                        
+                        let buttonString = "";
+                        if(this.game.newGame) {
+                            buttonString = '<button id="revenche-button">Revanche</button>'
+                        } else {
+                            buttonString = '<button id="revenche-button">Neues Spiel</button>'
+                        }
+                        document.body.innerHTML = `
+                            <div style="display: flex; justify-content: center;" >
+                                <div class="result" style="display: grid; justify-content: center; max-width: 20em;">
+                                    <h1>Ergebnis</h1>
+                                    <div style="display: flex; justify-content: center;"><h3>Die Chancen standen 1:${this.game.odds}</h3></div>
+                                    <div style="display: grid; grid-template-columns: repeat(2, 1fr); justify-items: center;">
+                                        <div style="display: grid;">
+                                            <span style="font-weight: bold; color: rgb(133, 127, 143); font-size: 0.75em;">SPIELER 1</span>
+                                            <span style="font-size: 1.5em; font-weight: bold;">${this.game.player1}</span>
+                                        </div>
+                                        <div style="display: grid; justify-items: end;">
+                                            <span style="font-weight: bold; color: rgb(133, 127, 143); font-size: 0.75em;">SPIELER 2</span>
+                                            <span style="font-size: 1.5em; font-weight: bold;">${this.game.player2}</span>
+                                        </div>
+                                    </div>
+                                    <div style="display: flex; justify-content: center;"><h2 style="margin-top: 2em;">${resultString}</h2></div>
+                                    ${buttonString}
+                                </div>
+                            </div>
+                        `
+                        if(this.game.newGame) {
+                            document.getElementById('revenche-button').addEventListener('click', () => {
+                                this.nextGame = new GameFlow(this.random, true, Math.floor(odds/2));
+                                this.nextGame.start();
+                            })
+                        } else {
+                            document.getElementById('revenche-button').addEventListener('click', () => {
+                                document.body.innerHTML = `
+                                    <div id="random-selector" class="selector">
+                                        <div id="random-yes" class="selector-tile">
+                                            <h1>Zufallszahlen</h1>
+                                            <p>Ihr gebt nur ein, wie hoch die Chancen sein sollen, der Rest erledigt der Computer.</p>
+                                        </div>
+                                        <div id="random-no" class="selector-tile">
+                                            <h1>Manuelle Eingabe</h1>
+                                            <p>Ihr gebt ein, wie hoch die Chancen sein sollen, danach kann jeder sein Zahl frei wählen, oder sich vom Computer helfen lassen.</p>
+                                        </div>
+                                    </div>
+                                `
+                                document.getElementById("random-yes").addEventListener("click", () => {
+                                    let game = new GameController(true)
+                                })
+                            
+                                document.getElementById("random-no").addEventListener("click", () => {
+                                    let game = new GameController(false)
+                                })
+                            })
+                        }
+                }
+            }
+
+            function GameController (random) {
+                this.random = random;
+
+                document.body.innerHTML = `
+                    <div id="revanche-selector" class="selector">
+                        <div id="no" class="selector-tile">
+                            <h1>Normal</h1>
+                            <p>Alles bleibt beim Alten.</p>
+                        </div>
+                        <div id="yes" class="selector-tile">
+                            <h1>Revanche mit doppelter Wahr&shy;schein&shy;lich&shy;keit</h1>
+                            <p>Wenn beide gewählten Zahlen zusammen addiert die Chance ergeben, gibts eine Revanche mit doppelter Treffer&shy;wahrschein&shy;lichkeit.</p>
+                        </div>
+                    </div>
+                `
+                document.getElementById("no").addEventListener("click", () => {
+                    this.newGameWhenEqualsOdds = false
+                    document.body.innerHTML = `
+                        <div id="odds-input" class="number-input">
+                            <h1>Welche Chance solls sein?</h1>
+                            <div class="input-div-wrapper"><span class="input-div"><span>1:</span><input type="number" step="1" min="2" max="100" id="input"></span></div>
+                            <div class="next-button-wrapper"><button id="odds-button">Weiter</button></div>
+                        </div>
+                    `
+                    document.getElementById('odds-button').addEventListener("click", async () => {
+                        let num = parseInt(document.getElementById('input').value)
+                        if((num >= 2) && (num <= 100)) {
+                            this.game = new GameFlow(this.random, this.newGameWhenEqualsOdds, num)
+                            this.game.start();
+                        }
+                    })
+                })
+
+                document.getElementById("yes").addEventListener("click", () => {
+                    this.newGameWhenEqualsOdds = true
+                    document.body.innerHTML = `
+                        <div id="odds-input" class="number-input">
+                            <h1>Welche Chance solls sein?</h1>
+                            <div class="input-div-wrapper"><span class="input-div"><span>1:</span><input type="number" step="1" min="2" max="100" id="input"></span></div>
+                            <div class="next-button-wrapper"><button id="odds-button">Weiter</button></div>
+                        </div>
+                    `
+                    document.getElementById('odds-button').addEventListener("click", async () => {
+                        let num = parseInt(document.getElementById('input').value)
+                        if((num >= 2) && (num <= 100)) {
+                            this.game = new GameFlow(this.random, this.newGameWhenEqualsOdds, num)
+                            this.game.start();
+                        }
+                    })
+                })
+            } 
+
+            document.getElementById("random-yes").addEventListener("click", () => {
+                let game = new GameController(true)
+            })
+
+            document.getElementById("random-no").addEventListener("click", () => {
+                let game = new GameController(false)
+            })
+        </script>
+    </body>
+</html>
